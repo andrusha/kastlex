@@ -8,8 +8,7 @@ defmodule Kastlex.MetricsController do
   use Kastlex.Web, :controller
 
   def fetch(conn, _params) do
-    # Newline at the end is needed to satisfy Prometheus parser
-    metrics = Enum.join(offsets(), "\n") <> "\n"
+    metrics = IO.chardata_to_string(offsets())
 
     conn
     |> put_resp_content_type("text/plain; version=0.0.4")
@@ -17,11 +16,12 @@ defmodule Kastlex.MetricsController do
   end
 
   defp offsets do
-    off = Enum.concat(cg_offsets(), topic_offsets())
-    Enum.concat([
-      "# TYPE kafka_consumer_group_offset gauge",
-      "# TYPE kafka_topic_offset gauge"
-    ], off)
+    [
+      "# TYPE kafka_consumer_group_offset gauge\n",
+      "# TYPE kafka_topic_offset gauge\n",
+      cg_offsets(),
+      topic_offsets()
+    ]
   end
 
   defp cg_offsets do
@@ -41,12 +41,12 @@ defmodule Kastlex.MetricsController do
   defp cg_offset_to_prometheus(cg_offset) do
     %{group_id: group_id, topic: topic, partition: partition, offset: offset} = cg_offset
 
-    ~s(kafka_consumer_group_offset{consumer_group="#{group_id}", topic="#{topic}", partition="#{partition}"} #{offset})
+    ["kafka_consumer_group_offset{consumer_group=\"", group_id, "\", topic=\"", topic, "\", partition=\"", to_string(partition), "\"} ", to_string(offset), "\n"]
   end
 
   defp topic_offset_to_prometheus(topic_offset) do
     %{topic: topic, partition: partition, offset: offset} = topic_offset
 
-    ~s(kafka_topic_offset{topic="#{topic}", partition="#{partition}"} #{offset})
+    ["kafka_topic_offset{topic=\"", topic, "\", partition=\"", to_string(partition), "\"} ", to_string(offset), "\n"]
   end
 end
