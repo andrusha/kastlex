@@ -25,13 +25,9 @@ defmodule Kastlex.MetricsController do
   end
 
   defp cg_offsets do
-    Kastlex.CgCache.get_groups()
-    |> Enum.flat_map(fn(group_id) ->
-      Kastlex.CgCache.get_group(group_id)
-      |> Map.get(:offsets)
-      |> Enum.map(fn(offset) ->
-        cg_offset_to_prometheus(group_id, offset)
-      end)
+    Kastlex.CgCache.get_consumer_groups_offsets()
+    |> Enum.map(fn(cg_offset) ->
+      cg_offset_to_prometheus(cg_offset)
     end)
   end
 
@@ -42,8 +38,8 @@ defmodule Kastlex.MetricsController do
     end)
   end
 
-  defp cg_offset_to_prometheus(group_id, cg_offset) do
-    %{topic: topic, partition: partition, offset: offset} = cg_offset
+  defp cg_offset_to_prometheus(cg_offset) do
+    %{group_id: group_id, topic: topic, partition: partition, offset: offset} = cg_offset
 
     ~s(kafka_consumer_group_offset{consumer_group="#{group_id}", topic="#{topic}", partition="#{partition}"} #{offset})
   end
